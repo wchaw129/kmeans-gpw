@@ -21,3 +21,7 @@ Desktop.ini
 
 # Temporary / test files
 testing.ipynb
+
+#data files
+data/financial_data
+data/raporty
