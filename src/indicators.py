@@ -76,7 +76,7 @@ def CountIndicators(
     dict['std'] = price['Zamkniecie'].pct_change().std()
 
 #wsp beta
-# TODO
+# TODO!
 
     return dict
 
