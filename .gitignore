@@ -21,7 +21,7 @@ Desktop.ini
 
 # Temporary / test files
 testing.ipynb
-indicators.py
+scraping.py
 
 #data files
 data/financial_data
