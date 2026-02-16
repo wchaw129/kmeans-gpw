@@ -2,55 +2,65 @@ import pandas as pd
 from io import StringIO
 import requests 
 import time
+from src.processing import read_file, clean_series
 
-def CountIndicators(
+
+def get_income(
         company_name: str,
-        ticker: str,
-        mean_periods: int
-) -> dict | None:
+        #year: int
+) -> pd.Series | None: 
     
-    dict = {}
-
-    DIR = rf'../data/raporty/{company_name}.csv' 
-    try:
-        df = pd.read_csv(DIR, sep = ',')
-        df = df.set_index('Dane / Okres').iloc[:, 2:]
-        df.columns = df.columns.str.slice(-4).astype(int)
-    except Exception as e:
-        print(e)
-        return None
-
-#ROE
+    df = read_file(company_name)
+    zysk = df.loc["Zysk netto", :]
     zysk = df.loc["Zysk netto", :]
     if isinstance(zysk, pd.Series):
         pass
     else: 
         zysk = zysk.iloc[0, :]
+    return clean_series(zysk)
+
+
+def aagr(
+        series: pd.Series
+) -> pd.Series:
+    return series.diff() / series.shift(1).abs()
+
+def CountIndicators(
+        company_name: str,
+        ticker: str,
+        mean_periods: int,
+        cagr_period: int
+) -> dict | None:
     
-    zysk = pd.to_numeric(zysk.str.replace(' ', '')) #zysk netto
-    kw = pd.to_numeric(df.loc['Kapitał własny', :].str.replace(" ", '')) #kapital wlasny
+    dict = {}
 
-    ROE_py = zysk/kw #ROE per year
-    dict['ROE'] = ROE_py[mean_periods:].mean()
+    df = read_file(company_name)
 
-#ROA 
-    if 'Aktywa trwałe' in df.index:
-        aktywa = pd.to_numeric(df.loc['Aktywa trwałe', :].str.replace(" ", ''))
+#dynamika ROE
+    profit = get_income(company_name) #zysk netto
+    equity_capital = clean_series(df.loc['Kapitał własny', :]) #kapital wlasny
+    ROE_py = profit/equity_capital #ROE per year
+    ROE_aagr = aagr(ROE_py)
+    dict['ROE'] = ROE_aagr[mean_periods:].mean()
+
+#dynamika ROA 
+    if 'Suma bilansowa' in df.index:
+        aktywa = pd.to_numeric(df.loc['Suma bilansowa', :].str.replace(" ", ''))
     else: 
-        aktywa = pd.to_numeric(df.loc['Rzeczowe aktywa trwałe', :].str.replace(" ", ''))
+        aktywa = pd.to_numeric(df.loc['Aktywa razem', :].str.replace(" ", ''))
 
-    ROA_py = zysk/aktywa
-    dict['ROA'] = ROA_py[mean_periods:].mean()
+    ROA_py = profit/aktywa
+    ROA_aagr = aagr(ROA_py)
+    dict['ROA'] = ROA_aagr[mean_periods:].mean()
 
-#CAGR przychodów
-    #przychody = pd.to_numeric(df.loc['Przychody', :].str.replace(" ", ''))
-    #CAGR = (przychody.iloc[-1] / przychody.iloc[-mean_periods]) ** (1/mean_periods) - 1
-    #dict['CAGR'] = CAGR
+#AAGR zysków
+    AAGR = aagr(profit)
+    dict['AAGR'] = AAGR[-cagr_period:].mean()
 
 #stopa dywidendy
-    liczba_akcji = pd.to_numeric(df.loc['Liczba akcji', :].str.replace(" ", ''))
-    dyw = pd.to_numeric(df.loc['Dywidenda', :].str.replace(" ", '')) * -1000 #kwota przeznaczona na dywidende w danym roku
-    DPS = dyw/liczba_akcji #dywidenda na akcje
+    liczba_akcji = clean_series(df.loc['Liczba akcji', :])
+    dyw = clean_series(df.loc['Dywidenda', :]) * -1000 #kwota przeznaczona na dywidende w danym roku
+    DPS = dyw/liczba_akcji #dividend per share
     DPS.name = 'DPS'
 
     share_prices = get_share_price(ticker)
@@ -60,24 +70,27 @@ def CountIndicators(
     dict['DY'] = DY_table['DY'][-mean_periods:].mean()
     
 #dynamika EPS 
-    EPS = zysk*1000/liczba_akcji
-    dict['dynamika EPS'] = EPS.pct_change()[-mean_periods:].mean()
+    EPS = profit*1000/liczba_akcji
+    dict['dynamika EPS'] = aagr(EPS)[-mean_periods:].mean()
 
 #P/E
     PE = PPS[PPS.index <= 2024] / EPS
     dict['P/E'] = PE[-mean_periods:].mean()
     
 #P/BV
-    PBV = PPS[PPS.index <= 2024] / (kw*1000/liczba_akcji)
+    PBV = PPS[PPS.index <= 2024] / (equity_capital*1000/liczba_akcji)
     dict['P/BV'] = PBV[-mean_periods:].mean()
     
 # std stop zwrotu
-    price = share_prices[share_prices['rok'] == 2024]
-    dict['std'] = price['Zamkniecie'].pct_change().std()
+    price_pct = share_prices[share_prices['rok'] == 2024]['Zamkniecie'].pct_change()
+    dict['std'] = price_pct.std()
 
-#wsp beta
-# TODO!
-
+#wsp beta 
+    wig = get_share_price('wig')
+    wig_pct = wig[wig['rok'] == 2024]['Zamkniecie'].pct_change()
+    dict['beta'] = price_pct.cov(wig_pct)/wig_pct.var()
+    
+    
     return dict
 
 
@@ -102,4 +115,3 @@ def get_share_price(
         print(e)
         return None
     
-
