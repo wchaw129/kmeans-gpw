@@ -7,7 +7,6 @@ from src.processing import read_file, clean_series
 
 def get_income(
         company_name: str,
-        #year: int
 ) -> pd.Series | None: 
     
     df = read_file(company_name)
@@ -25,73 +24,78 @@ def aagr(
 ) -> pd.Series:
     return series.diff() / series.shift(1).abs()
 
-def CountIndicators(
+def count_indicators(
         company_name: str,
         ticker: str,
         mean_periods: int,
-        cagr_period: int
+        aagr_period: int,
+        base_year: int
 ) -> dict | None:
     
-    dict = {}
+    result_dict = {}
 
     df = read_file(company_name)
 
-#dynamika ROE
+#ROE
     profit = get_income(company_name) #zysk netto
     equity_capital = clean_series(df.loc['Kapitał własny', :]) #kapital wlasny
     ROE_py = profit/equity_capital #ROE per year
-    ROE_aagr = aagr(ROE_py)
-    dict['ROE'] = ROE_aagr[mean_periods:].mean()
+    result_dict['ROE'] = ROE_py[-mean_periods:].mean()
 
-#dynamika ROA 
+#ROA 
     if 'Suma bilansowa' in df.index:
-        aktywa = pd.to_numeric(df.loc['Suma bilansowa', :].str.replace(" ", ''))
+        assets = clean_series(df.loc['Suma bilansowa', :])
     else: 
-        aktywa = pd.to_numeric(df.loc['Aktywa razem', :].str.replace(" ", ''))
+        assets = clean_series(df.loc['Aktywa razem', :])
 
-    ROA_py = profit/aktywa
-    ROA_aagr = aagr(ROA_py)
-    dict['ROA'] = ROA_aagr[mean_periods:].mean()
+    ROA_py = profit/assets
+    result_dict['ROA'] = ROA_py[-mean_periods:].mean()
 
 #AAGR zysków
     AAGR = aagr(profit)
-    dict['AAGR'] = AAGR[-cagr_period:].mean()
+    result_dict['AAGR'] = AAGR[-aagr_period:].mean()
 
 #stopa dywidendy
-    liczba_akcji = clean_series(df.loc['Liczba akcji', :])
+    shares_n = clean_series(df.loc['Liczba akcji', :])
     dyw = clean_series(df.loc['Dywidenda', :]) * -1000 #kwota przeznaczona na dywidende w danym roku
-    DPS = dyw/liczba_akcji #dividend per share
+    DPS = dyw/shares_n #dividend per share
     DPS.name = 'DPS'
 
     share_prices = get_share_price(ticker)
     PPS = share_prices.groupby('rok')['Zamkniecie'].mean() #cena za akcje
     DY_table = pd.merge(DPS, PPS, how = 'inner', left_index = True, right_index = True)
     DY_table['DY'] = DY_table['DPS'] / DY_table['Zamkniecie']
-    dict['DY'] = DY_table['DY'][-mean_periods:].mean()
+    result_dict['DY'] = DY_table['DY'][-mean_periods:].mean()
     
 #dynamika EPS 
-    EPS = profit*1000/liczba_akcji
-    dict['dynamika EPS'] = aagr(EPS)[-mean_periods:].mean()
+    EPS = profit*1000/shares_n
+    result_dict['dynamika EPS'] = aagr(EPS)[-mean_periods:].mean()
 
 #P/E
-    PE = PPS[PPS.index <= 2024] / EPS
-    dict['P/E'] = PE[-mean_periods:].mean()
+    PE = PPS[PPS.index <= base_year] / EPS
+    result_dict['P/E'] = PE[-mean_periods:].mean()
     
 #P/BV
-    PBV = PPS[PPS.index <= 2024] / (equity_capital*1000/liczba_akcji)
-    dict['P/BV'] = PBV[-mean_periods:].mean()
+    PBV = PPS[PPS.index <= base_year] / (equity_capital*1000/shares_n)
+    result_dict['P/BV'] = PBV[-mean_periods:].mean()
     
 # std stop zwrotu
-    price_pct = share_prices[share_prices['rok'] == 2024]['Zamkniecie'].pct_change()
-    dict['std'] = price_pct.std()
+    price_pct = share_prices[share_prices['rok'] == base_year]['Zamkniecie'].pct_change()
+    price_pct.name = 'price_pct'
+    result_dict['std'] = price_pct.std()
 
 #wsp beta 
     wig = get_share_price('wig')
-    wig_pct = wig[wig['rok'] == 2024]['Zamkniecie'].pct_change()
-    dict['beta'] = price_pct.cov(wig_pct)/wig_pct.var()
+    wig_pct = wig[wig['rok'] == base_year]['Zamkniecie'].pct_change()
+    wig_pct.name = 'wig_pct'
+    aligned_returns = pd.merge(wig_pct, price_pct, left_index=True, right_index=True, how='inner')
+    aligned_returns = aligned_returns.dropna() 
+    cov = aligned_returns['price_pct'].cov(aligned_returns['wig_pct'])
+    var = aligned_returns['wig_pct'].var()
+    result_dict['beta'] = cov/var
     
     
-    return dict
+    return result_dict
 
 
 def get_share_price(
