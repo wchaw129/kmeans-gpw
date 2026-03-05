@@ -24,6 +24,21 @@ def aagr(
 ) -> pd.Series:
     return series.diff() / series.shift(1).abs()
 
+
+
+def get_dividend_per_share(
+        company_name: str,
+) -> pd.Series:
+    
+    df = read_file(company_name)
+    shares_n = clean_series(df.loc['Liczba akcji', :])
+    dyw = clean_series(df.loc['Dywidenda', :]) * -1000 #kwota przeznaczona na dywidende w danym roku
+    DPS = dyw/shares_n #dividend per share
+    DPS.name = 'DPS'
+    return DPS
+
+
+
 def count_indicators(
         company_name: str,
         ticker: str,
@@ -56,10 +71,7 @@ def count_indicators(
     result_dict['AAGR'] = AAGR[-aagr_period:].mean()
 
 #stopa dywidendy
-    shares_n = clean_series(df.loc['Liczba akcji', :])
-    dyw = clean_series(df.loc['Dywidenda', :]) * -1000 #kwota przeznaczona na dywidende w danym roku
-    DPS = dyw/shares_n #dividend per share
-    DPS.name = 'DPS'
+    DPS = get_dividend_per_share(company_name=company_name)
 
     share_prices = get_share_price(ticker)
     PPS = share_prices.groupby('rok')['Zamkniecie'].mean() #cena za akcje
@@ -68,6 +80,7 @@ def count_indicators(
     result_dict['DY'] = DY_table['DY'][-mean_periods:].mean()
     
 #dynamika EPS 
+    shares_n = clean_series(df.loc['Liczba akcji', :])
     EPS = profit*1000/shares_n
     result_dict['dynamika EPS'] = aagr(EPS)[-mean_periods:].mean()
 
