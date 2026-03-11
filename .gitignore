@@ -26,3 +26,6 @@ scraping.py
 #data files
 data/financial_data
 data/raporty
+
+#charts
+notebooks/charts
