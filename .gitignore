@@ -26,6 +26,8 @@ scraping.py
 #data files
 data/financial_data
 data/raporty
+data/clean/wig.csv
 
 #charts
 notebooks/charts
+
