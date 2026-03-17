@@ -26,6 +26,12 @@ The project implements a robust machine learning pipeline:
 3.  **Winsorization**: Statistical transformation to limit the influence of outliers.
 4.  **K-Means Algorithm**: The final segmentation of WIG30 companies.
 
+🤖 Dimensionality Reduction: PCA
+To visualize the multi-dimensional dataset and understand the clustering quality, Principal Component Analysis (PCA) was applied.
+![PCA visualisation](https://github.com/wchaw129/kmeans-gpw/blob/197b735d9c3a1a1d1bb85206cf94be49d37d9ba6/charts/pca_vis.png)
+
+
+
 ## 📈 Strategy Validation & Results
 
 To verify the effectiveness of the segmentation, three investment portfolios (**A, B, and C**) were constructed based on the identified clusters. Their performance was backtested against the **WIG index** benchmark using 2025 price data.
