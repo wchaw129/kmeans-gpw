@@ -44,4 +44,4 @@ def set_plot_style():
 def save_chart(
         chart_name: str
 ):
-    plt.savefig(rf'charts/{chart_name}.png', dpi = 300, bbox_inches='tight')
+    plt.savefig(rf'../charts/{chart_name}.png', dpi = 300, bbox_inches='tight')
