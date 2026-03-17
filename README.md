@@ -28,9 +28,9 @@ The project implements a robust machine learning pipeline:
 
 🤖 Dimensionality Reduction: PCA
 To visualize the multi-dimensional dataset and understand the clustering quality, Principal Component Analysis (PCA) was applied.
-![PCA visualisation](https://github.com/wchaw129/kmeans-gpw/blob/197b735d9c3a1a1d1bb85206cf94be49d37d9ba6/charts/pca_vis.png)
-
-
+<div align="center">
+  <img src="charts/pca_vis.png" width="500" alt="PCA Visualization">
+</div>
 
 ## 📈 Strategy Validation & Results
 
