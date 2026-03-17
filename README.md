@@ -39,7 +39,7 @@ The clustering analysis allowed for the definition of three distinct investment 
 ### Performance Comparison 
 The chart below illustrates the cumulative returns of the three portfolios and WIG index in 2025:
 
-![Portfolio Performance 2025](./path-to-your-chart/chart.png)
+![Portfolio Performance 2025](https://github.com/wchaw129/kmeans-gpw/blob/bf2845da49cbdd6e22a2e1ca71b774e7da9e81c0/charts/portf_result.png)
 
 ---
 
